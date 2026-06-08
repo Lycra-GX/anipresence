@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import os
 import re
 import requests
@@ -208,7 +210,7 @@ class AniPresence:
     CACHE_PATH = os.path.expanduser("~/.cache/anipresence/cover.json")
     cache: MetaDataCache
     mpv_pid = None
-    rpc: Union["Presence", None] = None
+    rpc: Union[Presence, None] = None
     rpc_connected = False
     title_format = TitleFormat.ROMAJI # fallback if not set
 
@@ -233,6 +235,7 @@ class AniPresence:
 
     @staticmethod
     def _extract_ps_title(line: str) -> Union[str, None]:
+        # Extract the value passed to --force-media-title from the full mpv command line.
         if match := re.search(
             r"--force-media-title=(?P<title>.*?)(?=\s--[A-Za-z0-9_-]+(?:=|$)|$)",
             line,
@@ -242,6 +245,7 @@ class AniPresence:
 
     @staticmethod
     def _extract_wmctrl_title(line: str) -> Union[str, None]:
+        # wmctrl -lp outputs: window_id desktop pid host title.
         if match := re.search(r"^\S+\s+\S+\s+\S+\s+\S+\s+(?P<title>.+)$", line):
             return match.group("title")
         return None
