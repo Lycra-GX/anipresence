@@ -237,6 +237,7 @@ class AniPresence:
     def _extract_ps_title(line: str) -> Optional[str]:
         # Extract the value passed to --force-media-title from the full mpv command line.
         # The lookahead stops at the next flag or the end of the command string.
+        # This keeps the match stable even when mpv adds more arguments after the title.
         if match := re.search(
             r"--force-media-title=(?P<title>.*?)(?=\s--[A-Za-z0-9_-]+(?:=|$)|$)",
             line,
@@ -308,6 +309,7 @@ class AniPresence:
             try:
                 processes = json.loads(stdout)
             except json.JSONDecodeError:
+                print("Unable to parse Windows mpv process list")
                 return None
             if isinstance(processes, dict):
                 processes = [processes]
