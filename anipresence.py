@@ -189,41 +189,18 @@ class AniPlayerRegex:
 class AniPresence:
     anime: Anime
 
-    ps_regexes = [
+    title_regexes = [
         AniPlayerRegex(
-            r".*mpv.*--force-media-title=(?P<title>.*)-"
-            r"episode-(?P<ep>[^-]+).*",
-            is_hyphenated=True,
-        ),
-        AniPlayerRegex(
-            r".*mpv.*--force-media-title=(?P<title>.*) "
-            r"Episode (?P<ep>[0-9]+).*",
+            r"(?:\[[^\]]+\]\s+)?(?P<title>.+?)\s+E(?P<ep>[0-9]+)\s+"
+            r"\[[^\]]+\]\[[^\]]+\]",
             is_hyphenated=False,
         ),
-    ]
-
-    wmctrl_regexes = [
         AniPlayerRegex(
-            r".*N/A\s+(?P<title>.*)-"
-            r"episode-(?P<ep>[^-]+).*",
+            r"(?P<title>.+?)-episode-(?P<ep>[^-]+)",
             is_hyphenated=True,
         ),
         AniPlayerRegex(
-            r".*N/A\s+(?P<title>.*) "
-            r"Episode (?P<ep>[0-9]+).*",
-            is_hyphenated=False,
-        ),
-    ]
-
-    win_regexes = [
-        AniPlayerRegex(
-            r".*mpv\s+(?P<title>.*)-"
-            r"episode-(?P<ep>[^-]+).*",
-            is_hyphenated=True,
-        ),
-        AniPlayerRegex(
-            r".*mpv\s+(?P<title>.*) "
-            r"Episode (?P<ep>[0-9]+).*",
+            r"(?P<title>.+?)\s+Episode (?P<ep>[0-9]+)",
             is_hyphenated=False,
         ),
     ]
@@ -254,58 +231,121 @@ class AniPresence:
             self.rpc.clear()
             self.rpc.close()
 
+    @staticmethod
+    def _extract_ps_title(line: str) -> Union[str, None]:
+        if match := re.search(
+            r"--force-media-title=(?P<title>.*?)(?=\s--[A-Za-z0-9_-]+(?:=|$)|$)",
+            line,
+        ):
+            return match.group("title")
+        return None
+
+    @staticmethod
+    def _extract_wmctrl_title(line: str) -> Union[str, None]:
+        if match := re.search(r"^\S+\s+\S+\s+\S+\s+\S+\s+(?P<title>.+)$", line):
+            return match.group("title")
+        return None
+
+    def _match_title(self, title: str):
+        for regex in self.title_regexes:
+            if m := regex.pattern.fullmatch(title):
+                return m, regex.is_hyphenated
+        return None, None
+
     def get_anime(self) -> Anime:
         if self.mpv_pid is not None and self.mpv_pid != "PID":
             try:
                 mpv_pid = int(self.mpv_pid)
-                os.kill(mpv_pid, 0)
+                if os.name == "nt":
+                    alive = (
+                        subprocess.run(
+                            [
+                                "powershell",
+                                "-NoProfile",
+                                "-Command",
+                                f"Get-Process -Id {mpv_pid} -ErrorAction Stop | Out-Null",
+                            ],
+                            capture_output=True,
+                            text=True,
+                        ).returncode
+                        == 0
+                    )
+                    if not alive:
+                        raise OSError
+                else:
+                    os.kill(mpv_pid, 0)
             except OSError:
                 print("Our mpv died")
                 return None, None
         # Case: Windows
         if os.name == "nt":
-            ps = subprocess.run("powershell \"Get-Process | Where-Object {$_.mainWindowTitle} | Format-Table id, name, mainWindowtitle -AutoSize | grep mpv\"", capture_output=True, text=True,shell=True)
-            for line in ps.stdout.splitlines():
-                pid = re.search(r'\d+', str(line))
-                for regex in self.win_regexes:
-                    if m := regex.pattern.fullmatch(line):
-                        if self.mpv_pid is not None:
-                            print("set mpv pid " + str(pid))
-                            self.mpv_pid = pid.group()
-                        return Anime(
-                            m.group("title"),
-                            m.group("ep"),
-                            regex.is_hyphenated,
-                            self.title_format
-                            )
+            ps = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    (
+                        "Get-Process | "
+                        "Where-Object { $_.MainWindowTitle -and $_.ProcessName -match 'mpv' } | "
+                        "Select-Object Id,ProcessName,MainWindowTitle | "
+                        "ConvertTo-Json -Compress"
+                    ),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            stdout = ps.stdout.strip()
+            if not stdout:
+                return None
+            try:
+                processes = json.loads(stdout)
+            except json.JSONDecodeError:
+                return None
+            if isinstance(processes, dict):
+                processes = [processes]
+            for proc in processes:
+                title = str(proc.get("MainWindowTitle", "")).strip()
+                if not title:
+                    continue
+                m, is_hyphenated = self._match_title(title)
+                if m:
+                    self.mpv_pid = str(proc.get("Id"))
+                    return Anime(
+                        m.group("title"),
+                        m.group("ep"),
+                        is_hyphenated,
+                        self.title_format,
+                    )
         else:
             # Case: ani-cli on Linux
             ps = os.popen("ps aux").read()
             for line in ps.splitlines():
                 pid = re.split(r"[ ]+", line)[1]
-                for regex in self.ps_regexes:
-                    if m := regex.pattern.fullmatch(line):
+                if title := self._extract_ps_title(line):
+                    m, is_hyphenated = self._match_title(title)
+                    if m:
                         if self.mpv_pid is not None:
                             self.mpv_pid = pid
                         return Anime(
                             m.group("title"),
                             m.group("ep"),
-                            regex.is_hyphenated,
-                            self.title_format
+                            is_hyphenated,
+                            self.title_format,
                         )
             # Case mpv w/o ani-cli running, Linux
             ps = os.popen("wmctrl -lp").read()
             for line in ps.splitlines():
                 pid = re.split(r"[ ]+", line)[2]
-                for regex in self.wmctrl_regexes:
-                    if m := regex.pattern.fullmatch(line):
+                if title := self._extract_wmctrl_title(line):
+                    m, is_hyphenated = self._match_title(title)
+                    if m:
                         if self.mpv_pid is not None:
                             self.mpv_pid = pid
                         return Anime(
                             m.group("title"),
                             m.group("ep"),
-                            regex.is_hyphenated,
-                            self.title_format
+                            is_hyphenated,
+                            self.title_format,
                         )
         self.mpv_pid = None
         return None
