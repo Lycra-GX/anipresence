@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from __future__ import annotations
-
 import os
 import re
 import requests
@@ -9,7 +7,7 @@ import json
 import argparse
 import time
 
-from typing import Optional, Pattern, Union
+from typing import NamedTuple, Optional, Pattern
 from enum import Enum
 
 if os.name == "nt":
@@ -188,6 +186,11 @@ class AniPlayerRegex:
         self.is_hyphenated = is_hyphenated
 
 
+class MatchResult(NamedTuple):
+    match: Optional[re.Match[str]]
+    is_hyphenated: Optional[bool]
+
+
 class AniPresence:
     anime: Anime
 
@@ -210,7 +213,7 @@ class AniPresence:
     CACHE_PATH = os.path.expanduser("~/.cache/anipresence/cover.json")
     cache: MetaDataCache
     mpv_pid = None
-    rpc: Union[Presence, None] = None
+    rpc: Optional[object] = None
     rpc_connected = False
     title_format = TitleFormat.ROMAJI # fallback if not set
 
@@ -252,13 +255,11 @@ class AniPresence:
             return match.group("title")
         return None
 
-    def _match_title(
-        self, title: str
-    ) -> tuple[Optional[re.Match[str]], Optional[bool]]:
+    def _match_title(self, title: str) -> MatchResult:
         for regex in self.title_regexes:
             if m := regex.pattern.fullmatch(title):
-                return m, regex.is_hyphenated
-        return None, None
+                return MatchResult(m, regex.is_hyphenated)
+        return MatchResult(None, None)
 
     def get_anime(self) -> Optional[Anime]:
         """Return the currently playing anime, or None when no mpv window is active."""
@@ -312,6 +313,7 @@ class AniPresence:
                 print("Unable to parse Windows mpv process list")
                 return None
             if isinstance(processes, dict):
+                # PowerShell returns a dict for one result and a list for many.
                 processes = [processes]
             for proc in processes:
                 title = str(proc.get("MainWindowTitle", "")).strip()
