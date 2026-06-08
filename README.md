@@ -1,6 +1,6 @@
 # anipresence
 
-discord rich presence for ani-cli/animdl:
+discord rich presence for ani-cli/anipy-cli/animdl:
 
 <p align="center">
     <img style="width: 400px" alt="screenshot" src="https://gist.githubusercontent.com/jakobbbb/d46ec01fc919d857cf5dbc8e9b051bc8/raw/61f74b486b94df68235565119a1cd99e0b254156/screenshot.png"/>
@@ -31,9 +31,11 @@ profile-cond=os.execute("/path/to/anipresence.py > /dev/null &")
 
 since autostart does not work like this on Windows, you can start the script with the argument `-d` or `--daemonlike` which checks every 10s if a process matches the regexes. It's called daemon-like, because it will, once started, keep running and check running processes every 10s starting the rpc and connecting to Discord every time it finds a match.
 
+anipy-cli is supported as long as it launches mpv with `--force-media-title` (the default).
+
 ## show titles on discord
 
-shows usually have three official titles that AL reconizes and makes easily accessible:
+shows usually have three official titles that AL recognizes and makes easily accessible:
 
 `Romaji`, `Native` and `English`. for [EVA](https://anilist.co/anime/30/Shin-Seiki-Evangelion/) that would be "Shin Seiki Evangelion", "新世紀エヴァンゲリオン" and "Neon Genesis Evangelion". anipresence uses romaji as the default title format.
 
