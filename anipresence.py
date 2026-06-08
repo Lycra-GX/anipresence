@@ -208,7 +208,7 @@ class AniPresence:
     CACHE_PATH = os.path.expanduser("~/.cache/anipresence/cover.json")
     cache: MetaDataCache
     mpv_pid = None
-    rpc: Union[Presence, None] = None
+    rpc: Union["Presence", None] = None
     rpc_connected = False
     title_format = TitleFormat.ROMAJI # fallback if not set
 
