@@ -236,6 +236,7 @@ class AniPresence:
     @staticmethod
     def _extract_ps_title(line: str) -> Optional[str]:
         # Extract the value passed to --force-media-title from the full mpv command line.
+        # The lookahead stops at the next flag or the end of the command string.
         if match := re.search(
             r"--force-media-title=(?P<title>.*?)(?=\s--[A-Za-z0-9_-]+(?:=|$)|$)",
             line,
@@ -250,7 +251,9 @@ class AniPresence:
             return match.group("title")
         return None
 
-    def _match_title(self, title: str):
+    def _match_title(
+        self, title: str
+    ) -> tuple[Optional[re.Match[str]], Optional[bool]]:
         for regex in self.title_regexes:
             if m := regex.pattern.fullmatch(title):
                 return m, regex.is_hyphenated
