@@ -35,7 +35,7 @@ anipy-cli is supported as long as it launches mpv with `--force-media-title` (th
 
 ## show titles on discord
 
-shows usually have three official titles that AL reconizes and makes easily accessible:
+shows usually have three official titles that AL recognizes and makes easily accessible:
 
 `Romaji`, `Native` and `English`. for [EVA](https://anilist.co/anime/30/Shin-Seiki-Evangelion/) that would be "Shin Seiki Evangelion", "新世紀エヴァンゲリオン" and "Neon Genesis Evangelion". anipresence uses romaji as the default title format.
 

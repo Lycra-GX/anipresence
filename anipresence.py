@@ -252,7 +252,7 @@ class AniPresence:
                 return m, regex.is_hyphenated
         return None, None
 
-    def get_anime(self) -> Anime:
+    def get_anime(self) -> Union[Anime, None]:
         if self.mpv_pid is not None and self.mpv_pid != "PID":
             try:
                 mpv_pid = int(self.mpv_pid)
@@ -276,7 +276,7 @@ class AniPresence:
                     os.kill(mpv_pid, 0)
             except OSError:
                 print("Our mpv died")
-                return None, None
+                return None
         # Case: Windows
         if os.name == "nt":
             ps = subprocess.run(
