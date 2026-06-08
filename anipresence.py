@@ -260,6 +260,7 @@ class AniPresence:
         return None, None
 
     def get_anime(self) -> Optional[Anime]:
+        """Return the currently playing anime, or None when no mpv window is active."""
         if self.mpv_pid is not None and self.mpv_pid != "PID":
             try:
                 mpv_pid = int(self.mpv_pid)
