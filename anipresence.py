@@ -9,7 +9,7 @@ import json
 import argparse
 import time
 
-from typing import Pattern, Union
+from typing import Optional, Pattern, Union
 from enum import Enum
 
 if os.name == "nt":
@@ -234,7 +234,7 @@ class AniPresence:
             self.rpc.close()
 
     @staticmethod
-    def _extract_ps_title(line: str) -> Union[str, None]:
+    def _extract_ps_title(line: str) -> Optional[str]:
         # Extract the value passed to --force-media-title from the full mpv command line.
         if match := re.search(
             r"--force-media-title=(?P<title>.*?)(?=\s--[A-Za-z0-9_-]+(?:=|$)|$)",
@@ -244,7 +244,7 @@ class AniPresence:
         return None
 
     @staticmethod
-    def _extract_wmctrl_title(line: str) -> Union[str, None]:
+    def _extract_wmctrl_title(line: str) -> Optional[str]:
         # wmctrl -lp outputs: window_id desktop pid host title.
         if match := re.search(r"^\S+\s+\S+\s+\S+\s+\S+\s+(?P<title>.+)$", line):
             return match.group("title")
@@ -256,7 +256,7 @@ class AniPresence:
                 return m, regex.is_hyphenated
         return None, None
 
-    def get_anime(self) -> Union[Anime, None]:
+    def get_anime(self) -> Optional[Anime]:
         if self.mpv_pid is not None and self.mpv_pid != "PID":
             try:
                 mpv_pid = int(self.mpv_pid)
